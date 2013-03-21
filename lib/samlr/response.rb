@@ -57,6 +57,11 @@ module Samlr
         end
       end
 
+      if RUBY_PLATFORM == "java"
+        Samlr.logger.warn("JRuby, Skipping schema validation")
+        return document
+      end
+
       begin
         Samlr::Tools.validate!(:document => document)
       rescue Samlr::SamlrError => e

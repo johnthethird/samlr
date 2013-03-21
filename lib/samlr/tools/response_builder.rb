@@ -124,7 +124,7 @@ module Samlr
         env_signature = options[:env_signature] || "http://www.w3.org/2000/09/xmldsig#enveloped-signature"
         namespaces    = options[:namespaces]    || [ "#default", "samlp", "saml", "ds", "xs", "xsi" ]
 
-        canoned       = element.canonicalize(C14N, namespaces)
+        canoned = Samlr::Tools.canonicalize(element, { :c14n_mode => C14N, :namespaces => namespaces})
         digest_value  = Base64.encode64(OpenSSL::Digest::SHA1.new.digest(canoned)).delete("\n")
 
         builder = Nokogiri::XML::Builder.new(:encoding => "UTF-8") do |xml|

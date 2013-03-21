@@ -31,7 +31,7 @@ module Samlr
     # Accepts a document and optionally :path => xpath, :c14n_mode => c14n_mode
     def self.canonicalize(xml, options = {})
       options  = { :c14n_mode => C14N }.merge(options)
-      document = Nokogiri::XML(xml) { |c| c.strict.noblanks }
+      document = xml.is_a?(Nokogiri::XML::Element) ? xml : Nokogiri::XML(xml) { |c| c.strict.noblanks }
 
       if path = options[:path]
         node = document.at(path, NS_MAP)
