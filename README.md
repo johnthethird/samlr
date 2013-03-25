@@ -1,3 +1,5 @@
+### MODIFIED to run under JRuby as well, utilizing the JSR-105 APIs to validate the SAML document
+
 ## Samlr [![Build Status](https://secure.travis-ci.org/zendesk/samlr.png)](http://travis-ci.org/zendesk/samlr)
 
 Samlr is a clean room implementation of SAML for Ruby. It's focused on implementing the service provider (SP) side rather than the identity provider (IdP).

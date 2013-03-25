@@ -31,11 +31,22 @@ module Samlr
     end
 
     def verify!
-      raise SigntureError.new("No signature at #{prefix}/ds:Signature") unless present?
+      raise SignatureError.new("No signature at #{prefix}/ds:Signature") unless present?
 
       verify_fingerprint! unless options[:skip_fingerprint]
-      verify_digests!
-      verify_signature!
+
+      # HACK since Nokogiri doesnt support C14N under JRuby.
+      # So we use the Validate.java class to do the validation using JSR-105 API in xmlsec-1.5.3.jar
+      if RUBY_ENGINE == 'jruby'
+        $CLASSPATH << File.join(File.dirname(__FILE__))
+        import "Validator"
+        unless Validator.validate(@original.to_s)
+          raise SignatureError.new("Signature validation error (java).")
+        end
+      else
+        verify_digests!
+        verify_signature!
+      end
 
       true
     end
