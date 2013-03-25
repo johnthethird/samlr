@@ -43,8 +43,12 @@ module Samlr
       # HACK since Nokogiri doesnt support C14N under JRuby.
       # So we use the Validate.java class to do the validation using JSR-105 API in xmlsec-1.5.3.jar
       if RUBY_ENGINE == 'jruby'
-        unless Validator.validate(@original.to_s)
-          raise SignatureError.new("Signature validation error (java).")
+        begin
+          unless Java::Default::Validator.validate(@original.to_s)
+            raise SignatureError.new("Signature validation error (java).")
+          end
+        rescue Exception => e
+          raise SignatureError.new("Signature validation error (java): #{e.message}")
         end
       else
         verify_digests!
