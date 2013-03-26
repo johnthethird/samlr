@@ -3,7 +3,7 @@ require "base64"
 require "samlr/reference"
 
 if RUBY_ENGINE == 'jruby'
-  $CLASSPATH << File.join(File.dirname(__FILE__), "../../ext")
+  $CLASSPATH << File.join(File.dirname(__FILE__), "..", "..", "ext")
   import "Validator" unless defined?("Java::Default::Validator")
 end
 
