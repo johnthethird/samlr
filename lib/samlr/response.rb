@@ -13,7 +13,7 @@ module Samlr
     def initialize(data, options)
       @options  = options
       @document = Response.parse(data)
-
+      Samlr.logger.info("[SAMLR] Parsed Response: #{@document.to_xml}") if options[:debug]
       @options[:fingerprint] = Samlr::Fingerprint.new(options[:fingerprint] || options[:certificate])
     end
 
@@ -58,14 +58,14 @@ module Samlr
       end
 
       if RUBY_PLATFORM == "java"
-        Samlr.logger.warn("JRuby, Skipping schema validation")
+        Samlr.logger.warn("[SAMLR] JRuby, Skipping schema validation")
         return document
       end
 
       begin
         Samlr::Tools.validate!(:document => document)
       rescue Samlr::SamlrError => e
-        Samlr.logger.warn("Accepting non schema conforming response: #{e.message}, #{e.details}")
+        Samlr.logger.warn("[SAMLR] Accepting non schema conforming response: #{e.message}, #{e.details}")
         raise e unless Samlr.validation_mode == :log
       end
 

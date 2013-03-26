@@ -36,7 +36,9 @@ module Samlr
           end
         end
 
-        builder.to_xml(COMPACT)
+        req = builder.to_xml(COMPACT)
+        Samlr.logger.info("[SAMLR] Request:#{req}") if options[:debug]
+        req
       end
 
     end
