@@ -3,19 +3,26 @@ import javax.xml.crypto.dsig.*;
 import javax.xml.crypto.dom.*;
 import javax.xml.crypto.dsig.dom.DOMValidateContext;
 import javax.xml.crypto.dsig.keyinfo.*;
+import javax.xml.validation.*;
+import javax.xml.xpath.*;
+import javax.xml.XMLConstants;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.stream.StreamSource;
+import org.xml.sax.InputSource;
+import org.w3c.dom.Document;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.w3c.dom.Attr;
+import org.w3c.dom.Element;
 import java.io.FileInputStream;
+import java.io.StringReader;
+import java.io.File;
+import java.util.Scanner;
 import java.security.*;
 import java.security.cert.*;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
-import javax.xml.parsers.DocumentBuilderFactory;
-import org.w3c.dom.Document;
-import org.w3c.dom.NodeList;
-import org.xml.sax.InputSource;
-import java.io.StringReader;
-import java.io.File;
-import java.util.Scanner;
 /**
  * Validating an XML Signature using the JSR 105 API. It assumes the key needed to
  * validate the signature is contained in a KeyInfo node.
@@ -37,9 +44,31 @@ public class Validator {
     public static boolean validate(String samlResponse) {
         boolean coreValidity = false;
         try {
+            // New Java versions (java 7u25+) are more strict in parsing ID nodes.
+            // The right way to handle this is to make sure we specify a schema. Unfortunately
+            // this worked but was very slow (30+seconds). Also tried local schema, still slow. Not sure why.
+
+            // SchemaFactory schemaFactory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
+            // Schema schema = schemaFactory.newSchema(new URL("http://docs.oasis-open.org/security/saml/v2.0/saml-schema-protocol-2.0.xsd"));
+            // DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+            // dbf.setNamespaceAware(true);
+            // dbf.setSchema(schema);
+            // Document doc = dbf.newDocumentBuilder().parse(new InputSource(new StringReader(samlResponse)));
+
             DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
             dbf.setNamespaceAware(true);
             Document doc = dbf.newDocumentBuilder().parse(new InputSource(new StringReader(samlResponse)));
+
+            // So, it turns out you can hack your way past the problem if you specifically identify the nodes as ID nodes
+            // Loop through the doc and tag every element with an ID attribute as an XML ID node.
+            XPath xpath = XPathFactory.newInstance().newXPath();
+            XPathExpression expr = xpath.compile("//*[@ID]");
+            NodeList nodeList = (NodeList) expr.evaluate(doc, XPathConstants.NODESET);
+            for (int i=0; i<nodeList.getLength() ; i++) {
+              Element elem = (Element) nodeList.item(i);
+              Attr attr = (Attr) elem.getAttributes().getNamedItem("ID");
+              elem.setIdAttributeNode(attr, true);
+            }
 
             // Find Signature element
             NodeList nl = doc.getElementsByTagNameNS(XMLSignature.XMLNS, "Signature");
