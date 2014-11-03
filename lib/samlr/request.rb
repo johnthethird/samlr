@@ -20,18 +20,32 @@ module Samlr
 
     # Utility method to get the full redirect destination, Request#url("https://idp.example.com/saml", { :RelayState => "https://sp.example.com/saml" })
     def url(root, params = {})
-      dest = root.dup
-      if dest.include?("?")
-        dest << "&SAMLRequest=#{param}"
-      else
-        dest << "?SAMLRequest=#{param}"
+      buffer = root.dup
+      buffer << (buffer.include?("?") ? "&" : "?")
+
+      signable = "SAMLRequest=#{param}"
+      signable << "&RelayState=#{CGI.escape(params.delete(:RelayState))}" if params[:RelayState]
+
+      if options[:sign_requests]
+        signable << "&SigAlg=#{CGI.escape('http://www.w3.org/2000/09/xmldsig#rsa-sha1')}"
+        signature = compute_signature(signable)
+        signable << "&Signature=#{signature}"
       end
+
+      buffer << signable
 
       params.each_pair do |key, value|
-        dest << "&#{key}=#{CGI.escape(value.to_s)}"
+        buffer << "&#{key}=#{CGI.escape(value.to_s)}"
       end
 
-      dest
+      buffer
+    end
+
+    private
+    def compute_signature(signable)
+      key_pair  = OpenSSL::PKey::RSA.new(options[:saml_signing_key])
+      sig = key_pair.sign(OpenSSL::Digest::SHA1.new, signable)
+      CGI.escape(Base64.encode64(sig).delete("\n"))
     end
   end
 end
