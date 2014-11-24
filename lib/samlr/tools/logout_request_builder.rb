@@ -9,7 +9,7 @@ module Samlr
         name_id = options.fetch(:name_id)
         issuer  = options.fetch(:issuer)
 
-        builder = Nokogiri::XML::Builder.new do |xml|
+        builder = Nokogiri::XML::Builder.new(:encoding => "UTF-8") do |xml|
           xml.LogoutRequest("xmlns:samlp" => NS_MAP["samlp"], "xmlns:saml" => NS_MAP["saml"], "ID" => Samlr::Tools.uuid, "IssueInstant" => Samlr::Tools::Timestamp.stamp, "Version" => "2.0") do
             xml.doc.root.namespace = xml.doc.root.namespace_definitions.find { |ns| ns.prefix == "samlp" }
             xml["saml"].Issuer(issuer)

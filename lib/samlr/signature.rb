@@ -68,7 +68,7 @@ module Samlr
     def verify_digests!
       references.each do |reference|
         node    = referenced_node(reference.uri)
-        canoned = node.canonicalize(C14N, reference.namespaces)
+        canoned = Samlr::Tools.canonicalize(node)
         digest  = reference.digest_method.digest(canoned)
 
         if digest != reference.decoded_digest_value
@@ -79,8 +79,7 @@ module Samlr
 
     # Tests correctness of the signature (and hence digests)
     def verify_signature!
-      node      = original.at("#{prefix}/ds:Signature/ds:SignedInfo", NS_MAP)
-      canoned   = node.canonicalize(C14N)
+      canoned = Samlr::Tools.canonicalize(original, {:path => "#{prefix}/ds:Signature/ds:SignedInfo"})
 
       unless x509.public_key.verify(signature_method.new, decoded_signature_value, canoned)
         raise SignatureError.new("Signature validation error: Possible canonicalization mismatch", "This canonicalizer returns #{canoned}")

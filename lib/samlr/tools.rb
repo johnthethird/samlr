@@ -13,6 +13,14 @@ require "samlr/tools/logout_request_builder"
 
 module Samlr
   module Tools
+
+    if RUBY_ENGINE == 'jruby'
+      Dir.glob("#{File.join(File.dirname(__FILE__), "..", "..", "ext")}/*.jar").each { |f| $CLASSPATH << f }
+      import 'org.apache.xml.security.c14n.Canonicalizer'
+      # This has to be done to Init the logging subsystem, even though we arent using it
+      org.apache.xml.security.Init.init
+    end
+
     SHA_MAP = {
       1    => OpenSSL::Digest::SHA1,
       256  => OpenSSL::Digest::SHA256,
@@ -32,7 +40,11 @@ module Samlr
     # Accepts a document and optionally :path => xpath, :c14n_mode => c14n_mode
     def self.canonicalize(xml, options = {})
       options  = { :c14n_mode => C14N }.merge(options)
-      document = Nokogiri::XML(xml) { |c| c.strict.noblanks }
+      if [Nokogiri::XML::Element, Nokogiri::XML::Document].include?(xml.class)
+        document = xml
+      else
+        document = Nokogiri::XML(xml, nil, "UTF-8") { |c| c.strict.noblanks }
+      end
 
       if path = options[:path]
         node = document.at(path, NS_MAP)
@@ -40,7 +52,16 @@ module Samlr
         node = document
       end
 
-      node.canonicalize(options[:c14n_mode], options[:namespaces])
+      if RUBY_ENGINE == 'jruby'
+        # without this next line you get these when running the tests:
+        # Java::OrgXmlSax::SAXParseException: The prefix "saml" for element "saml:Assertion" is not bound.
+        node.namespaces.each_pair {|key, value| node[key] = value }
+        c = Canonicalizer.getInstance(Canonicalizer::ALGO_ID_C14N_EXCL_OMIT_COMMENTS)
+        String.from_java_bytes(c.canonicalize(node.to_xml(:encoding => "UTF-8").to_java_bytes))
+      else
+        node.canonicalize(options[:c14n_mode], options[:namespaces])
+      end
+
     end
 
     # Generate an xs:NCName conforming UUID
@@ -83,7 +104,7 @@ module Samlr
       if document.is_a?(Nokogiri::XML::Document)
         xml = document
       else
-        xml = Nokogiri::XML(document) { |c| c.strict }
+        xml = Nokogiri::XML(document, nil, "UTF-8") { |c| c.strict }
       end
 
       # All bundled schemas are using relative schemaLocation. This means we'll have to
