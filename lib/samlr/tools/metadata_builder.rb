@@ -17,7 +17,7 @@ module Samlr
         # Mandatory
         entity_id                 = options.fetch(:entity_id)
 
-        builder = Nokogiri::XML::Builder.new do |xml|
+        builder = Nokogiri::XML::Builder.new(:encoding => "UTF-8") do |xml|
           xml.EntityDescriptor("xmlns:md" => NS_MAP["md"], "entityID" => entity_id) do
             xml.doc.root.namespace = xml.doc.root.namespace_definitions.find { |ns| ns.prefix == "md" }
 

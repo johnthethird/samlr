@@ -46,10 +46,10 @@ module Samlr
     # send that rather than a Base64 encoded value
     def self.parse(data)
       begin
-        document = Nokogiri::XML(Base64.decode64(data)) { |config| config.strict }
+        document = Nokogiri::XML(Base64.decode64(data), nil, "UTF-8") { |config| config.strict }
       rescue Nokogiri::XML::SyntaxError => e
         begin
-          document = Nokogiri::XML(data) { |config| config.strict }
+          document = Nokogiri::XML(data, nil, "UTF-8") { |config| config.strict }
         rescue
           raise Samlr::FormatError.new(e.message)
         end
