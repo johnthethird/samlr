@@ -10,7 +10,7 @@ module Samlr
         issuer               = options[:issuer]
         name_identity_format = options[:name_identity_format]
         allow_create         = options[:allow_create] || "true"
-        authn_context        = options[:authn_context]
+        authn_context        = Samlr::Tools.wrap_in_array(options[:authn_context])
 
         builder = Nokogiri::XML::Builder.new(:encoding => "UTF-8") do |xml|
           xml.AuthnRequest("xmlns:samlp" => NS_MAP["samlp"], "xmlns:saml" => NS_MAP["saml"], "ID" => Samlr::Tools.uuid, "IssueInstant" => Samlr::Tools::Timestamp.stamp, "Version" => "2.0") do
@@ -28,16 +28,20 @@ module Samlr
               xml["samlp"].NameIDPolicy("AllowCreate" => allow_create, "Format" => name_identity_format)
             end
 
-            unless authn_context.nil?
+            if authn_context.size > 0
               xml["samlp"].RequestedAuthnContext("Comparison" => "exact") do
-                xml["saml"].AuthnContextClassRef(authn_context)
+                authn_context.each do |ac|
+                  xml["saml"].AuthnContextClassRef(ac)
+                end
               end
             end
+
           end
         end
 
         builder.to_xml(COMPACT)
       end
+
 
     end
   end
