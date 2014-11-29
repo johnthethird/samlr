@@ -15,11 +15,23 @@ module Samlr
   module Tools
 
     if RUBY_ENGINE == 'jruby'
-      Dir.glob("#{File.join(File.dirname(__FILE__), "..", "..", "ext")}/*.jar").each { |f| $CLASSPATH << f }
+      #Dir.glob("#{File.join(File.dirname(__FILE__), "..", "..", "ext")}/*.jar").each { |f| $CLASSPATH << f }
+      # Not used, but required by xmlsec.jar
+      $CLASSPATH << File.join(File.dirname(__FILE__), "..", "..", "ext", "commons-logging-1.2.jar")
+      $CLASSPATH << File.join(File.dirname(__FILE__), "..", "..", "ext", "xmlsec-1.5.3.jar")
       import 'org.apache.xml.security.c14n.Canonicalizer'
+      import 'org.xml.sax.InputSource'
+      import 'java.io.StringReader'
+      import 'java.io.ByteArrayInputStream'
+      import 'javax.xml.parsers.DocumentBuilderFactory'
+      import 'javax.xml.xpath.XPathConstants'
+      import 'javax.xml.xpath.XPathFactory'
       # This has to be done to Init the logging subsystem, even though we arent using it
       org.apache.xml.security.Init.init
+      NS_CONTEXT = Object.new
+      def NS_CONTEXT.getNamespaceURI(prefix); Samlr::NS_MAP[prefix]; end
     end
+
 
     SHA_MAP = {
       1    => OpenSSL::Digest::SHA1,
@@ -37,29 +49,39 @@ module Samlr
       implementation || OpenSSL::Digest::SHA1
     end
 
-    # Accepts a document and optionally :path => xpath, :c14n_mode => c14n_mode
+    # Accepts a document and optionally :path => xpath, :c14n_mode => c14n_mode, :namespaces => ['ns1', 'ns2']
     def self.canonicalize(xml, options = {})
-      options  = { :c14n_mode => C14N }.merge(options)
-      if [Nokogiri::XML::Element, Nokogiri::XML::Document].include?(xml.class)
-        document = xml
-      else
-        document = Nokogiri::XML(xml, nil, "UTF-8") { |c| c.strict.noblanks }
-      end
-
-      if path = options[:path]
-        node = document.at(path, NS_MAP)
-      else
-        node = document
-      end
+      options  = { :c14n_mode => C14N, :path => ".", :namespaces => [] }.merge(options)
 
       if RUBY_ENGINE == 'jruby'
-        # without this next line you get these when running the tests:
-        # Java::OrgXmlSax::SAXParseException: The prefix "saml" for element "saml:Assertion" is not bound.
-        node.namespaces.each_pair {|key, value| node[key] = value }
-        c = Canonicalizer.getInstance(Canonicalizer::ALGO_ID_C14N_EXCL_OMIT_COMMENTS)
-        String.from_java_bytes(c.canonicalize(node.to_xml(:encoding => "UTF-8").to_java_bytes))
-      else
-        node.canonicalize(options[:c14n_mode], options[:namespaces])
+        xml = xml.to_xml(COMPACT) unless xml.is_a?(String)
+
+        # PERF Someday if this becomes a bottleneck put one in each thread local (they are not thread safe)
+        domFactory = DocumentBuilderFactory.newInstance()
+        domFactory.setNamespaceAware(true)
+
+        document = domFactory.newDocumentBuilder().parse(InputSource.new(StringReader.new(xml)))
+        #document = domFactory.newDocumentBuilder().parse(ByteArrayInputStream.new(xml.to_java_bytes))
+        xPath =  XPathFactory.newInstance().newXPath()
+        xPath.namespace_context = NS_CONTEXT
+
+        c = Canonicalizer.getInstance("http://www.w3.org/2001/10/xml-exc-c14n#")
+
+        node = xPath.evaluate(options[:path], document, XPathConstants::NODE)
+        decoded = String.from_java_bytes(c.canonicalizeSubtree(node, options[:namespaces].join(" "))).force_encoding("UTF-8")
+
+        # # without this next line you get these when running the tests:
+        # # Java::OrgXmlSax::SAXParseException: The prefix "saml" for element "saml:Assertion" is not bound.
+        # #node.namespaces.each_pair {|key, value| node[key] = value }
+      else #MRI
+        if [Nokogiri::XML::Element, Nokogiri::XML::Document].include?(xml.class)
+          xml = xml
+        else
+          xml = Nokogiri::XML(xml, nil, "UTF-8") { |c| c.strict.noblanks }
+        end
+        node = xml.at(options[:path], NS_MAP)
+        canoned = node.canonicalize(options[:c14n_mode], options[:namespaces])
+        canoned
       end
 
     end

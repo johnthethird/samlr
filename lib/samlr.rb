@@ -3,7 +3,7 @@ require "logger"
 
 module Samlr
   C14N    = Nokogiri::XML::XML_C14N_EXCLUSIVE_1_0
-  COMPACT = { :indent => 0, :save_with => Nokogiri::XML::Node::SaveOptions::AS_XML }
+  COMPACT = { :indent => 0, :save_with => Nokogiri::XML::Node::SaveOptions::AS_XML, :encoding => "UTF-8" }
 
   NS_MAP  = {
     "c14n"  => "http://www.w3.org/2001/10/xml-exc-c14n#",

@@ -47,5 +47,16 @@ def fixed_saml_response(options = {})
     :not_before      => Samlr::Tools::Timestamp.stamp(Time.at(1344379365 - 60))
   }.merge(options)
 
+  if RUBY_ENGINE == 'jruby'
+    # For some reason, JRuby Nokogiri does not output the namespaces when building the
+    # response with arrays of attrs, which causes it to fail in parsing the test response.
+    # <saml:Attribute Name="things">
+    #     <saml:AttributeValue type="xs:string">one</saml:AttributeValue>
+    #     <saml:AttributeValue type="xs:string">two</saml:AttributeValue>
+    #     <saml:AttributeValue type="xs:string">three</saml:AttributeValue>
+    # </saml:Attribute>
+    options[:attributes] = { "tags" => "mean horse"}
+  end
+
   saml_response(options)
 end

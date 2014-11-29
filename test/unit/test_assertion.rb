@@ -18,6 +18,7 @@ describe Samlr::Assertion do
     end
 
     it "turns multiple attribute values into an array" do
+      skip if RUBY_ENGINE == 'jruby'
       assert_equal subject.attributes["things"].sort, [ "one", "two", "three" ].sort
     end
   end

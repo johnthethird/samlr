@@ -14,6 +14,68 @@ describe Samlr::Tools do
     end
   end
 
+  describe "::jruby c14n Okta" do
+    before do
+      @fixture = File.read(File.join(FIXTURE_PATH, "sample_response_okta.xml"), :encoding => 'UTF-8')
+      @properly_canoned = File.read(File.join(FIXTURE_PATH, "sample_response_okta_c14n_mri.xml"), :encoding => 'UTF-8')
+    end
+
+    it "should c14n Response" do
+      xml = Nokogiri::XML(@fixture, nil, "UTF-8") { |c| c.strict.noblanks }
+      node = xml.at("//*[@ID='id26775890404714381981713714']", Samlr::NS_MAP)
+      signature = node.at("/samlp:Response/ds:Signature", Samlr::NS_MAP)
+      signature.remove
+      assert_equal @properly_canoned, Samlr::Tools.canonicalize(xml, :path => "//*[@ID='id26775890404714381981713714']", :namespaces => ['xs'])
+    end
+
+    it "should c14n SignedInfo" do
+      xml = Nokogiri::XML(@fixture, nil, "UTF-8") { |c| c.strict.noblanks }
+      node = xml.at("//*[@ID='id26775890404714381981713714']", Samlr::NS_MAP)
+      signature = node.at("/samlp:Response/ds:Signature", Samlr::NS_MAP)
+
+      good = '<ds:SignedInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#"><ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"></ds:CanonicalizationMethod><ds:SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"></ds:SignatureMethod><ds:Reference URI="#id26775890404714381981713714"><ds:Transforms><ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"></ds:Transform><ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"><ec:InclusiveNamespaces xmlns:ec="http://www.w3.org/2001/10/xml-exc-c14n#" PrefixList="xs"></ec:InclusiveNamespaces></ds:Transform></ds:Transforms><ds:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"></ds:DigestMethod><ds:DigestValue>iOf7+1VJ1X0EeEulKXz0lvsFU6s=</ds:DigestValue></ds:Reference></ds:SignedInfo>'
+      assert_equal good, Samlr::Tools.canonicalize(xml, :path => "/samlp:Response/ds:Signature/ds:SignedInfo")
+    end
+
+    it "should validate the fixture" do
+      doc = Samlr::Response.new(@fixture, {:skip_fingerprint => true})
+      Time.stub(:now, Time.new('2014','11','30','03','54','30', '+00:00')) do
+        doc.verify!
+      end
+    end
+  end
+
+  describe "::jruby c14n adfs" do
+    before do
+      @fixture = File.read(File.join(FIXTURE_PATH, "sample_response_adfs.xml"), :encoding => 'UTF-8')
+      @properly_canoned = File.read(File.join(FIXTURE_PATH, "sample_response_adfs_c14n_mri.xml"), :encoding => 'UTF-8')
+    end
+
+    it "should c14n Response" do
+      xml = Nokogiri::XML(@fixture, nil, "UTF-8") { |c| c.strict.noblanks }
+      node = xml.at("//*[@ID='_7b459394-07fb-42ec-9b98-ce0cbd048895']", Samlr::NS_MAP)
+      signature = node.at("/samlp:Response/ds:Signature", Samlr::NS_MAP)
+      signature.remove
+      assert_equal @properly_canoned, Samlr::Tools.canonicalize(xml, :path => "//*[@ID='_7b459394-07fb-42ec-9b98-ce0cbd048895']", :namespaces => ['xs'])
+    end
+
+    it "should c14n SignedInfo" do
+      xml = Nokogiri::XML(@fixture, nil, "UTF-8") { |c| c.strict.noblanks }
+      node = xml.at("//*[@ID='_7b459394-07fb-42ec-9b98-ce0cbd048895']", Samlr::NS_MAP)
+      signature = node.at("/samlp:Response/ds:Signature", Samlr::NS_MAP)
+
+      good = '<ds:SignedInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#"><ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"></ds:CanonicalizationMethod><ds:SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"></ds:SignatureMethod><ds:Reference URI="#_7b459394-07fb-42ec-9b98-ce0cbd048895"><ds:Transforms><ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"></ds:Transform><ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"></ds:Transform></ds:Transforms><ds:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"></ds:DigestMethod><ds:DigestValue>shZBebTIT6qcHIhgcnDGiv5ETV4=</ds:DigestValue></ds:Reference></ds:SignedInfo>'
+      assert_equal good, Samlr::Tools.canonicalize(xml, :path => "/samlp:Response/ds:Signature/ds:SignedInfo")
+    end
+
+    it "should validate the fixture" do
+      doc = Samlr::Response.new(@fixture, {:skip_fingerprint => true})
+      Time.stub(:now, Time.new('2014','11','30','03','40','02', '+00:00')) do
+        doc.verify!
+      end
+    end
+  end
+
   describe "::uuid" do
     it "generates a valid xs:ID" do
       assert Samlr::Tools.uuid !~ /^\d/

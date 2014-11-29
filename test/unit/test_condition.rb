@@ -1,10 +1,18 @@
 require File.expand_path("test/test_helper")
 
-def condition(before, after)
-  element = Nokogiri::XML::Element.new('saml:Condition', Nokogiri::XML(''))
-  element["NotBefore"] = before.utc.iso8601 if before
-  element["NotOnOrAfter"] = after.utc.iso8601 if after
+def condition_element(before=nil, after=nil)
+  Nokogiri::XML::Builder.new(:encoding => "UTF-8") do |xml|
+    attrs = {}
+    attrs["NotBefore"] = before.utc.iso8601.encode("utf-8") if before
+    attrs["NotOnOrAfter"] = after.utc.iso8601.encode("utf-8") if after
+    xml.Conditions(attrs)
+    xml.doc.root.add_namespace_definition("saml", Samlr::NS_MAP["saml"])
+    xml.doc.root.namespace = xml.doc.root.namespace_definitions.find { |ns| ns.prefix == "saml" }
+  end.doc.children.first
+end
 
+def condition(before, after)
+  element = condition_element(before, after)
   Samlr::Condition.new(element, {})
 end
 
@@ -184,7 +192,7 @@ describe Samlr::Condition do
 
   describe "#audience_satisfied?" do
     it "returns true when audience is a nil value" do
-      element = Nokogiri::XML::Node.new('saml:Condition', Nokogiri::XML(''))
+      element = condition_element
       assert Samlr::Condition.new(element, {}).audience_satisfied?
     end
 
@@ -198,14 +206,14 @@ describe Samlr::Condition do
 
   describe "#not_before_satisfied?" do
     it "returns true when passed a nil value" do
-      element = Nokogiri::XML::Node.new('saml:Condition', Nokogiri::XML(''))
+      element = condition_element
       assert Samlr::Condition.new(element, {}).not_before_satisfied?
     end
   end
 
   describe "#not_on_or_after_satisfied?" do
     it "returns true when passed a nil value" do
-      element = Nokogiri::XML::Node.new('saml:Condition', Nokogiri::XML(''))
+      element = condition_element
       assert Samlr::Condition.new(element, {}).not_on_or_after_satisfied?
     end
   end

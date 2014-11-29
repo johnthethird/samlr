@@ -6,6 +6,12 @@ require "samlr/reference"
 module Samlr
   # A SAML specific implementation http://en.wikipedia.org/wiki/XML_Signature
   class Signature
+
+    if RUBY_ENGINE == 'jruby'
+     $CLASSPATH << File.join(File.dirname(__FILE__), "..", "..", "ext")
+     import "Validator" unless defined?("Java::Default::Validator")
+    end
+
     attr_reader :original, :document, :prefix, :options, :signature, :fingerprint
 
     # Is initialized with the source document and a path to the element embedding the signature
@@ -39,8 +45,24 @@ module Samlr
       raise SignatureError.new("No signature at #{prefix}/ds:Signature") unless present?
 
       verify_fingerprint! unless options[:skip_fingerprint]
-      verify_digests!
-      verify_signature!
+
+      # HACK since Nokogiri doesnt support C14N under JRuby.
+      # So we use the Validate.java class to do the validation using JSR-105 API in xmlsec-1.5.3.jar
+      # We must use the raw response data we get *before* nokogiri munges it, or else the Java validator doesnt always work.
+      # Probably a C14N issue.
+      if RUBY_ENGINE == 'jruby' && options.fetch(:java_signature_validator, true)
+        Samlr.logger.info("[SAMLR] Using Java Signature Validation") if options[:debug]
+        begin
+          unless Java::Default::Validator.validate(@original.to_s, options.fetch(:certificate, ""))
+            raise SignatureError.new("Signature validation error (java).")
+          end
+        rescue Exception => e
+          raise SignatureError.new("Signature validation error (java): #{e.message}")
+        end
+      else
+        verify_digests!
+        verify_signature!
+      end
 
       true
     end
@@ -68,7 +90,7 @@ module Samlr
     def verify_digests!
       references.each do |reference|
         node    = referenced_node(reference.uri)
-        canoned = Samlr::Tools.canonicalize(node)
+        canoned = Samlr::Tools.canonicalize(node, :path => "//*[@ID='#{reference.uri}']", :namespaces => reference.namespaces)
         digest  = reference.digest_method.digest(canoned)
 
         if digest != reference.decoded_digest_value
@@ -79,7 +101,7 @@ module Samlr
 
     # Tests correctness of the signature (and hence digests)
     def verify_signature!
-      canoned = Samlr::Tools.canonicalize(original, {:path => "#{prefix}/ds:Signature/ds:SignedInfo"})
+      canoned = Samlr::Tools.canonicalize(original, :path => "#{prefix}/ds:Signature/ds:SignedInfo")
 
       unless x509.public_key.verify(signature_method.new, decoded_signature_value, canoned)
         raise SignatureError.new("Signature validation error: Possible canonicalization mismatch", "This canonicalizer returns #{canoned}")
