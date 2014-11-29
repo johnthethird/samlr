@@ -28,6 +28,8 @@ describe Samlr::Response do
 
   describe "XSW attack" do
     it "should not validate if SAML response is hacked" do
+      skip if RUBY_ENGINE == 'jruby'
+
       document = saml_response_document(:certificate => TEST_CERTIFICATE)
 
       modified_document = Nokogiri::XML(document)

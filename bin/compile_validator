@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+echo "Compiling Validator.java..."
+javac -cp ext/\* ext/Validator.java

@@ -20,7 +20,12 @@ describe Samlr::Reference do
 
   describe "#digest_value" do
     it "should return the verbatim value" do
-      assert_equal "OSVXSTu8W+eGao6muxUHXcKQwZU=", @reference.digest_value
+      if RUBY_ENGINE == 'jruby'
+        # Since fixed_saml_response is different for JRuby (no array of attrs)
+        assert_equal "pbj8+cnxWDWES+wDaxdp81B1zEs=", @reference.digest_value
+      else
+        assert_equal "OSVXSTu8W+eGao6muxUHXcKQwZU=", @reference.digest_value
+      end
     end
   end
 
