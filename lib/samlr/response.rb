@@ -55,6 +55,13 @@ module Samlr
         end
       end
 
+      # Work around error
+      # RuntimeError (Could not parse document: src-resolve: Cannot resolve the name 'ds:Signature' to a(n) 'element declaration' component.)
+      if RUBY_ENGINE == 'jruby'
+        Samlr.logger.warn("[SAMLR] JRuby -- Skipping schema validation")
+        return document
+      end
+
       begin
         Samlr::Tools.validate!(:document => document)
       rescue Samlr::SamlrError => e
