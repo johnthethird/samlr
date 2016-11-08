@@ -86,11 +86,15 @@ describe Samlr::Response do
         end
       end
 
-      describe "and Samlr.validation_mode != :log" do
-        it "raises" do
-          assert_raises(Samlr::FormatError) { Samlr::Response.parse(subject) }
+      # Dont do this test on JRuby because we skip the validations anyway
+      unless RUBY_ENGINE == 'jruby'
+        describe "and Samlr.validation_mode != :log" do
+          it "raises" do
+            assert_raises(Samlr::FormatError) { Samlr::Response.parse(subject) }
+          end
         end
       end
+
     end
   end
 end

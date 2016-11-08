@@ -1,6 +1,6 @@
 require "bundler/setup"
 require "minitest/autorun"
-
+require 'pry'
 require "time"
 require "base64"
 require "tmpdir"
