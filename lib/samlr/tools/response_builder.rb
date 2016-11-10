@@ -44,7 +44,7 @@ module Samlr
             xml.doc.root.namespace = xml.doc.root.namespace_definitions.find { |ns| ns.prefix == "samlp" }
 
             xml["saml"].Issuer(issuer)
-            xml["samlp"].Status { |xml| xml["samlp"].StatusCode("Value" => status_code) }
+            xml["samlp"].Status { |x| x["samlp"].StatusCode("Value" => status_code) }
 
             unless skip_assertion
               xml["saml"].Assertion("xmlns:saml" => NS_MAP["saml"], "ID" => assertion_id, "IssueInstant" => issue_instant, "Version" => "2.0") do

@@ -53,7 +53,10 @@ module Samlr
       if RUBY_ENGINE == 'jruby' && options.fetch(:java_signature_validator, true)
         Samlr.logger.info("[SAMLR] Using Java Signature Validation") if options[:debug]
         begin
-          unless Java::Default::Validator.validate(@original.to_s, options.fetch(:certificate, ""))
+          # #validate expects pem to be a blank string not nil, if empty
+          cert = options.fetch(:certificate, "")
+          pem = cert.respond_to?(:to_pem) ? cert.to_pem : cert
+          unless Java::Default::Validator.validate(@original.to_s, pem)
             raise SignatureError.new("Signature validation error (java).")
           end
         rescue Exception => e
@@ -150,5 +153,6 @@ module Samlr
     def certificate_node
       signature.at("./ds:KeyInfo/ds:X509Data/ds:X509Certificate", NS_MAP)
     end
+
   end
 end

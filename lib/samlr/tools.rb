@@ -65,11 +65,11 @@ module Samlr
         xPath =  XPathFactory.newInstance().newXPath()
         xPath.namespace_context = NS_CONTEXT
 
-        c = Canonicalizer.getInstance("http://www.w3.org/2001/10/xml-exc-c14n#")
+        canon = Canonicalizer.getInstance("http://www.w3.org/2001/10/xml-exc-c14n#")
 
         node = xPath.evaluate(options[:path], document, XPathConstants::NODE)
-        decoded = String.from_java_bytes(c.canonicalizeSubtree(node, options[:namespaces].join(" "))).force_encoding("UTF-8")
-
+        decoded = String.from_java_bytes(canon.canonicalizeSubtree(node, options[:namespaces].join(" "))).force_encoding("UTF-8")
+        decoded
         # # without this next line you get these when running the tests:
         # # Java::OrgXmlSax::SAXParseException: The prefix "saml" for element "saml:Assertion" is not bound.
         # #node.namespaces.each_pair {|key, value| node[key] = value }

@@ -39,7 +39,7 @@ module Samlr
           elsif values.size == 1
             value = values.first.text
           else
-            value = values.map { |value| value.text }
+            value = values.map { |v| v.text }
           end
 
           attrs[name] = attrs[name.to_sym] = value

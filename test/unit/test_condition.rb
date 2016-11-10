@@ -45,7 +45,7 @@ describe Samlr::Condition do
             verify!
             flunk "Expected exception"
           rescue Samlr::ConditionsError => e
-            assert_match /Audience/, e.message
+            assert_match(/Audience/, e.message)
           end
         end
       end
@@ -140,7 +140,7 @@ describe Samlr::Condition do
               verify!
               flunk "Expected exception"
             rescue Samlr::ConditionsError => e
-              assert_match /Audience/, e.message
+              assert_match(/Audience/, e.message)
             end
           end
         end
@@ -159,7 +159,7 @@ describe Samlr::Condition do
           subject.verify!
           flunk "Expected exception"
         rescue Samlr::ConditionsError => e
-          assert_match /Not before/, e.message
+          assert_match(/Not before/, e.message)
         end
       end
     end
@@ -176,7 +176,7 @@ describe Samlr::Condition do
           subject.verify!
           flunk "Expected exception"
         rescue Samlr::ConditionsError => e
-          assert_match /Not on or after/, e.message
+          assert_match(/Not on or after/, e.message)
         end
       end
     end
