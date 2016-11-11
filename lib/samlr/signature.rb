@@ -27,7 +27,7 @@ module Samlr
       end
 
       @fingerprint = if options[:fingerprint]
-        Fingerprint.new(options[:fingerprint])
+        Fingerprint.from_string(options[:fingerprint])
       elsif options[:certificate]
         Certificate.new(options[:certificate]).fingerprint
       end
@@ -38,7 +38,7 @@ module Samlr
     end
 
     def missing?
-      signature.nil?
+      signature.nil? || certificate.nil?
     end
 
     def verify!
@@ -53,7 +53,10 @@ module Samlr
       if RUBY_ENGINE == 'jruby' && options.fetch(:java_signature_validator, true)
         Samlr.logger.info("[SAMLR] Using Java Signature Validation") if options[:debug]
         begin
-          unless Java::Default::Validator.validate(@original.to_s, options.fetch(:certificate, ""))
+          # #validate expects pem to be a blank string not nil, if empty
+          cert = options.fetch(:certificate, "")
+          pem = cert.respond_to?(:to_pem) ? cert.to_pem : cert
+          unless Java::Default::Validator.validate(@original.to_s, pem)
             raise SignatureError.new("Signature validation error (java).")
           end
         rescue Exception => e
@@ -78,12 +81,12 @@ module Samlr
     private
 
     def x509
-      @x509 ||= certificate.x509
+      @x509 ||= certificate!.x509
     end
 
     # Establishes trust that the remote party is who you think
     def verify_fingerprint!
-      fingerprint.compare!(certificate.fingerprint)
+      fingerprint.verify!(certificate!)
     end
 
     # Tests that the document content has not been edited
@@ -138,13 +141,18 @@ module Samlr
         elsif cert = options[:certificate]
           Certificate.new(cert)
         else
-          raise SignatureError.new("No X509Certificate element in response signature. Cannot validate signature.")
+          nil
         end
       end
+    end
+
+    def certificate!
+      certificate || raise(SignatureError.new("No X509Certificate element in response signature. Cannot validate signature."))
     end
 
     def certificate_node
       signature.at("./ds:KeyInfo/ds:X509Data/ds:X509Certificate", NS_MAP)
     end
+
   end
 end

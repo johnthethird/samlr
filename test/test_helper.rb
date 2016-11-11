@@ -1,13 +1,9 @@
-require "bundler"
+require "bundler/setup"
 require "minitest/autorun"
-
-Bundler.require
-
+require 'pry'
 require "time"
 require "base64"
 require "tmpdir"
-
-$LOAD_PATH.unshift(File.join(File.dirname(__FILE__), "..", "lib"))
 
 require "samlr"
 require "samlr/tools/response_builder"
@@ -33,7 +29,7 @@ end
 
 def saml_response(options = {})
   fingerprint   = options[:fingerprint]
-  fingerprint ||= options[:certificate] ? Samlr::Fingerprint.x509(options[:certificate].x509) : nil
+  fingerprint ||= options[:certificate] ? Samlr::FingerprintSHA256.x509(options[:certificate].x509) : nil
 
   Samlr::Response.new(saml_response_document(options), :fingerprint => fingerprint)
 end

@@ -39,7 +39,7 @@ module Samlr
           elsif values.size == 1
             value = values.first.text
           else
-            value = values.map { |value| value.text }
+            value = values.map { |v| v.text }
           end
 
           attrs[name] = attrs[name.to_sym] = value
@@ -48,7 +48,11 @@ module Samlr
     end
 
     def name_id
-      @name_id ||= name_id_node.text
+      if !name_id_node
+        raise Samlr::FormatError.new("Invalid SAML response: name_id missing")
+      else
+        @name_id ||= name_id_node.text
+      end
     end
 
     def name_id_options

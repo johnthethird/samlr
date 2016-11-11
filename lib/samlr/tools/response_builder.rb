@@ -19,13 +19,13 @@ module Samlr
         auth_context      = options[:auth_context]   || "urn:oasis:names:tc:SAML:2.0:ac:classes:Password"
         issuer            = options[:issuer]         || "ResponseBuilder IdP"
         attributes        = options[:attributes]     || {}
+        name_id           = options[:name_id]
         name_qualifier    = options[:name_qualifier]
         sp_name_qualifier = options[:sp_name_qualifier]
 
         # Mandatory for responses
         destination     = options.fetch(:destination)
         in_response_to  = options.fetch(:in_response_to)
-        name_id         = options.fetch(:name_id)
         not_on_or_after = options.fetch(:not_on_or_after)
         not_before      = options.fetch(:not_before)
         audience        = options.fetch(:audience)
@@ -44,7 +44,7 @@ module Samlr
             xml.doc.root.namespace = xml.doc.root.namespace_definitions.find { |ns| ns.prefix == "samlp" }
 
             xml["saml"].Issuer(issuer)
-            xml["samlp"].Status { |xml| xml["samlp"].StatusCode("Value" => status_code) }
+            xml["samlp"].Status { |x| x["samlp"].StatusCode("Value" => status_code) }
 
             unless skip_assertion
               xml["saml"].Assertion("xmlns:saml" => NS_MAP["saml"], "ID" => assertion_id, "IssueInstant" => issue_instant, "Version" => "2.0") do
@@ -55,7 +55,7 @@ module Samlr
                   name_id_options.merge!("NameQualifier" => name_qualifier) unless name_qualifier.nil?
                   name_id_options.merge!("SPNameQualifier" => sp_name_qualifier) unless sp_name_qualifier.nil?
 
-                  xml["saml"].NameID(name_id, name_id_options)
+                  xml["saml"].NameID(name_id, name_id_options) unless name_id.nil?
 
                   xml["saml"].SubjectConfirmation("Method" => subject_conf_m) do
                     xml["saml"].SubjectConfirmationData("InResponseTo" => in_response_to, "NotOnOrAfter" => not_on_or_after, "Recipient" => destination)
@@ -64,8 +64,12 @@ module Samlr
 
                 unless skip_conditions
                   xml["saml"].Conditions("NotBefore" => not_before, "NotOnOrAfter" => not_on_or_after) do
-                    xml["saml"].AudienceRestriction do
-                      xml["saml"].Audience(audience)
+                    Array(audience).each do |audience_nodes|
+                      xml["saml"].AudienceRestriction do
+                        Array(audience_nodes).each do |audience_value|
+                          xml["saml"].Audience(audience_value)
+                        end
+                      end
                     end
                   end
                 end
@@ -95,9 +99,11 @@ module Samlr
 
         # The core response is ready, not on to signing
         response = builder.doc
+        assertion_options = options.merge(:skip_keyinfo => options[:skip_assertion_keyinfo])
+        response = sign(response, assertion_id, assertion_options) if sign_assertion
 
-        response = sign(response, assertion_id, options) if sign_assertion
-        response = sign(response, response_id, options)  if sign_response
+        response_options = options.merge(:skip_keyinfo => options[:skip_response_keyinfo])
+        response = sign(response, response_id, response_options)  if sign_response
 
         response.to_xml(COMPACT)
       end

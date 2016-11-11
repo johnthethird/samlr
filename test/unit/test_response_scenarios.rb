@@ -13,6 +13,26 @@ describe Samlr do
     end
   end
 
+  describe "a valid response with a SHA1 fingerprint" do
+    let(:fp) { OpenSSL::Digest::SHA1.new.hexdigest(TEST_CERTIFICATE.x509.to_der) }
+    subject { saml_response(:certificate => TEST_CERTIFICATE, :fingerprint => fp) }
+
+    it "verifies" do
+      assert subject.verify!
+      assert_equal "someone@example.org", subject.name_id
+    end
+  end
+
+  describe "a valid response with a SHA256 fingerprint" do
+    let(:fp) { OpenSSL::Digest::SHA256.new.hexdigest(TEST_CERTIFICATE.x509.to_der) }
+    subject { saml_response(:certificate => TEST_CERTIFICATE, :fingerprint => fp) }
+
+    it "verifies" do
+      assert subject.verify!
+      assert_equal "someone@example.org", subject.name_id
+    end
+  end
+
   describe "an invalid fingerprint" do
     subject { saml_response(:certificate => TEST_CERTIFICATE, :fingerprint => "hello") }
     it "fails" do
@@ -71,7 +91,7 @@ describe Samlr do
   end
 
   describe "when there is no keyinfo" do
-    subject { saml_response(:certificate => TEST_CERTIFICATE, :skip_keyinfo => true) }
+    subject { saml_response(:certificate => TEST_CERTIFICATE, :skip_response_keyinfo => true, :skip_assertion_keyinfo => true) }
 
     it "fails" do
       assert_raises(Samlr::SignatureError) { subject.verify! }
@@ -104,8 +124,26 @@ describe Samlr do
     subject { saml_response(:certificate => TEST_CERTIFICATE, :response_id => "abcdef", :assertion_id => "abcdef") }
 
     it "fails" do
+      skip if RUBY_ENGINE == 'jruby' #jruby doesnt validate schemas
       assert_raises(Samlr::FormatError) { subject.verify! }
     end
   end
 
+  describe "when only the response signature is missing a certificate" do
+    subject { saml_response(:certificate => TEST_CERTIFICATE, :skip_response_keyinfo => true) }
+
+    it "verifies" do
+      # The Java validator doesnt handle this case and we dont need it
+      skip if RUBY_ENGINE == 'jruby'
+      assert subject.verify!
+    end
+  end
+
+  describe "when only the assertion signature is missing a certificate" do
+    subject { saml_response(:certificate => TEST_CERTIFICATE, :skip_assertion_keyinfo => true) }
+
+    it "verifies" do
+      assert subject.verify!
+    end
+  end
 end

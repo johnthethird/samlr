@@ -20,7 +20,7 @@ describe Samlr::LogoutRequest do
 
     it "should delegate the building to the LogoutRequestBuilder" do
       Samlr::Tools::LogoutRequestBuilder.stub(:build, "hello") do
-        assert_match "hello", @request.body
+        assert_match("hello", @request.body)
       end
     end
   end
@@ -42,32 +42,44 @@ describe Samlr::LogoutRequest do
   end
 
   describe "with optional params" do
+    def capture_stderr
+      old, $stderr = $stderr, StringIO.new
+      result = yield
+      [result, $stderr.string]
+    ensure
+      $stderr = old
+    end
+
     it "understands name_id_format" do
       options.merge!(:name_id_format => "some format")
-      request = Samlr::LogoutRequest.new(options)
+      body, stderr = capture_stderr do
+        request = Samlr::LogoutRequest.new(options)
+        request.body
+      end
 
-      assert_match /<saml:NameID Format="some format">/, request.body
+      body.must_include '<saml:NameID Format="some format">'
+      stderr.must_equal "[DEPRECATION] options[:name_id_format] is deprecated. Please use options[:name_id_options][:format] instead\n"
     end
 
     it "understands [:name_id_options][:format]" do
       options.merge!(:name_id_options => {:format => "some format"})
       request = Samlr::LogoutRequest.new(options)
 
-      assert_match /<saml:NameID Format="some format">/, request.body
+      assert_match(/<saml:NameID Format="some format">/, request.body)
     end
 
     it "understands NameQualifier" do
       options.merge!(:name_id_options => {:name_qualifier => "Some name qualifier"})
       request = Samlr::LogoutRequest.new(options)
 
-      assert_match /NameQualifier="Some name qualifier"/, request.body
+      assert_match(/NameQualifier="Some name qualifier"/, request.body)
     end
 
     it "understands SPNameQualifier" do
       options.merge!(:name_id_options => {:spname_qualifier => "Some SPName qualifier"})
       request = Samlr::LogoutRequest.new(options)
 
-      assert_match /SPNameQualifier="Some SPName qualifier"/, request.body
+      assert_match(/SPNameQualifier="Some SPName qualifier"/, request.body)
     end
   end
 end
