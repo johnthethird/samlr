@@ -23,6 +23,24 @@ describe Samlr do
     end
   end
 
+  describe "a valid response with multiple SHA1 fingerprints" do
+    let(:fp) { OpenSSL::Digest::SHA1.new.hexdigest(TEST_CERTIFICATE.x509.to_der) }
+    subject { saml_response(:certificate => TEST_CERTIFICATE, :fingerprint => [fp,'123']) }
+
+    it "verifies" do
+      assert subject.verify!
+      assert_equal "someone@example.org", subject.name_id
+    end
+  end
+
+  describe "an invalid response with multiple SHA1 fingerprints" do
+    subject { saml_response(:certificate => TEST_CERTIFICATE, :fingerprint => ['nope','123']) }
+
+    it "fails" do
+      assert_raises(Samlr::FingerprintError) { subject.verify! }
+    end
+  end
+
   describe "a valid response with a SHA256 fingerprint" do
     let(:fp) { OpenSSL::Digest::SHA256.new.hexdigest(TEST_CERTIFICATE.x509.to_der) }
     subject { saml_response(:certificate => TEST_CERTIFICATE, :fingerprint => fp) }

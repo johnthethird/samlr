@@ -12,7 +12,7 @@ module Samlr
      import "Validator" unless defined?("Java::Default::Validator")
     end
 
-    attr_reader :original, :document, :prefix, :options, :signature, :fingerprint
+    attr_reader :original, :document, :prefix, :options, :signature, :fingerprints
 
     # Is initialized with the source document and a path to the element embedding the signature
     def initialize(original, prefix, options)
@@ -26,10 +26,12 @@ module Samlr
         @signature.remove # enveloped signatures only
       end
 
-      @fingerprint = if options[:fingerprint]
-        Fingerprint.from_string(options[:fingerprint])
+      # Add ability to have an array of fingerprints and check them all
+      all_fingerprints = [options[:fingerprint], options[:fingerprints]].flatten.compact.uniq
+      @fingerprints = if all_fingerprints.size > 0
+        all_fingerprints.map{|f| Fingerprint.from_string(f)}.compact.uniq
       elsif options[:certificate]
-        Certificate.new(options[:certificate]).fingerprint
+        [Certificate.new(options[:certificate]).fingerprint]
       end
     end
 
@@ -85,8 +87,13 @@ module Samlr
     end
 
     # Establishes trust that the remote party is who you think
+    # Since we have multiple fingerprints, only one needs to succeed the rest will fail.
     def verify_fingerprint!
-      fingerprint.verify!(certificate!)
+      verified = false
+      fingerprints.each do |f|
+        (verified = f.verify!(certificate!)) rescue Samlr::FingerprintError
+      end
+      raise Samlr::FingerprintError.new("Fingerprint mismatch") unless verified
     end
 
     # Tests that the document content has not been edited
