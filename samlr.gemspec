@@ -19,5 +19,5 @@ Gem::Specification.new "samlr", Samlr::VERSION do |s|
   s.add_development_dependency("minitest")
   s.add_development_dependency("bump")
 
-  s.executables << "samlr"
+  # s.executables << "samlr"
 end
